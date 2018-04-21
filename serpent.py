@@ -5,6 +5,14 @@ import os
 
 from cmd import Cmd
 
+# Additional needs:
+#
+# 1.) Relays
+# 2.) nmap integration / nmap query
+# 3.) sqllite database for persisting results and configurations (logically segmented by op)
+# 4.) Integrated target profiles (i.e. accumulation of data on found hosts, as well as a mechnism for accessing that data)
+#
+
 # References:
 # https://docs.python.org/3/library/cmd.html
 # https://wiki.python.org/moin/CmdModule
@@ -16,7 +24,9 @@ class SerpentShell(Cmd):
     OUTPUT_FILENAME = os.path.join(SCRIPT_HOME_DIRECTORY, 'serpent_trail.log')
     PAYLOADS_DIRECTORY = os.path.join(SCRIPT_HOME_DIRECTORY, 'payloads')
 
-    RESOURCE_TYPES = ['payloads']
+    # TODO: Add support for configuring all of these resources
+    RESOURCE_TYPES = [ 'payloads', 'callbacks', 'profile' ]
+    
     MAX_COMPLETIONS = 10
     
     intro = 'Welcome to the serpent shell.   Type help or ? to list commands.\n'
@@ -112,6 +122,13 @@ class SerpentShell(Cmd):
         else:
             return None
 
+    def do_configure(self, arg):
+        # TODO: implement support for configuring the different payloads
+        # and storing that configuration to refer back to when interacting
+        # with the deployed agent; also need to dynamically configure the
+        # listener hooks / C2 system
+        pass
+
     def do_deploy(self, arg):
         'Deploy the specified payload to the specified target [deploy <payload> <target>]'
 
@@ -128,6 +145,14 @@ class SerpentShell(Cmd):
             else:
                 self.execute_shell_command('scp %s %s' % (payload_path, target))
 
+    def do_connect(self, arg):
+        # TODO: Support connecting to beacons (reverse shell type things)
+        pass
+
+    def do_send(self, arg):
+        # TODO: Send message to specified agent
+        pass
+    
     def do_quit(self, arg):
         'Stop recording, close the serpent window, and exit'
         print('Thank you for using Serpent')
@@ -140,4 +165,5 @@ class SerpentShell(Cmd):
             self.log_file = None
             
 if __name__ == '__main__':
+    # TODO: require initial configuration on first starup (op name, operator alias, etc.)
     SerpentShell().cmdloop()
