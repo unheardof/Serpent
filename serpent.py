@@ -1,17 +1,20 @@
 import datetime
 import subprocess
 import sys
+import os
+
 from cmd import Cmd
 
 # References:
 # https://docs.python.org/3/library/cmd.html
 # https://wiki.python.org/moin/CmdModule
 class SerpentShell(Cmd):
-    # TODO: protect against overwritting
-    # TODO: allow tagging / naming the file by ops
-    # TODO: support file rotation
-    # TODO: prepend date-time to each line before writing it to the log
-    OUTPUT_FILENAME = './serpent_trail.log'
+    # This is the directory where the serpent.py script is located
+    SCRIPT_HOME_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+    
+    # TODO: allow naming the file by the corresponding op / support file rotation
+    OUTPUT_FILENAME = os.path.join(SCRIPT_HOME_DIRECTORY, 'serpent_trail.log')
+    PAYLOADS_DIRECTORY = os.path.join(SCRIPT_HOME_DIRECTORY, 'payloads')
 
     MAX_COMPLETIONS = 10
     
@@ -44,19 +47,22 @@ class SerpentShell(Cmd):
             else:
                 return possible_system_commands
 
+    def execute_shell_command(self, command):
+        # TODO: Implement graceful scrolling over long results
+        try:
+            result = subprocess.check_output(command.split(' ')).decode('utf-8')
+            self.log_command(command, result)
+            print("%s" % result)
+        except:
+            print(sys.exc_info())
+            print('Exception encountered while attempting to execute shell command "%s"' % command)
+
     # TODO: Get this to work more seemlessly;
     # "shell bash" works when running; just need to grab STDOUT from the subprocess and feed the appropriate values to STDIN
     def do_shell(self, arg):
         'Execute a shell command'
 
-        # TODO: Implement graceful scrolling over long results
-        try:
-            result = subprocess.check_output(arg.split(' ')).decode('utf-8')
-            self.log_command(arg, result)
-            print("%s" % result)
-        except:
-            print(sys.exc_info())
-            print('Exception encountered while attempting to execute shell command "%s"' % arg)
+        self.execute_shell_command(arg)
             
     def do_load(self, arg):
         'Load a given module'
@@ -71,8 +77,31 @@ class SerpentShell(Cmd):
     # def do_(self, arg):
     #     pass
 
-    # def do_(self, arg):
-    #     pass
+    def find_payload(self, payload_name):
+        payload_path = os.path.join(self.PAYLOADS_DIRECTORY, payload_name)
+
+        if os.path.isfile(payload_path):
+            return payload_path
+        else:
+            return None
+
+    # TODO: Add a list_payloads action
+    def do_deploy(self, arg):
+        'Deploy the specified payload to the specified target [deploy <payload> <target>]'
+
+        args = arg.split(' ')
+        if len(args) != 2:
+            print('Error: incorrect command format\n')
+            print('Usage: deploy <payload> <target>\n')
+        else:
+            payload = args[0]
+            target = args[1]
+            payload_path = self.find_payload(payload)
+
+            if payload_path == None:
+                print("Payload '%s' not found" % arg)
+            else:
+                self.execute_shell_command('scp %s %s' % (payload_path, target))
 
     def do_quit(self, arg):
         'Stop recording, close the serpent window, and exit'
