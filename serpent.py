@@ -16,6 +16,7 @@ class SerpentShell(Cmd):
     OUTPUT_FILENAME = os.path.join(SCRIPT_HOME_DIRECTORY, 'serpent_trail.log')
     PAYLOADS_DIRECTORY = os.path.join(SCRIPT_HOME_DIRECTORY, 'payloads')
 
+    RESOURCE_TYPES = ['payloads']
     MAX_COMPLETIONS = 10
     
     intro = 'Welcome to the serpent shell.   Type help or ? to list commands.\n'
@@ -30,20 +31,29 @@ class SerpentShell(Cmd):
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         self.log_file.write("[%s] > %s\n" % (current_time, command))
-        for line in results.split('\n'):
+
+        results_list = None
+        if type(results) is list:
+            results_list = results
+        elif isinstance(results, str):
+            results_list = results.split('\n')
+        else:
+            raise Exception("Unsupported results type '%s' encountered in the log_command() method" % type(results))
+        
+        for line in results_list:
             self.log_file.write("[%s] %s\n" % (current_time, line))
 
-    # TODO: get this working
     # See https://stackoverflow.com/questions/187621/how-to-make-a-python-command-line-program-autocomplete-arbitrary-things-not-int/23959790
     def complete_shell(self, text, line, start_index, end_index):
-        if text:
+        if text != None:
             # See https://stackoverflow.com/questions/948008/linux-command-to-list-all-available-commands-and-aliases
-            possible_system_commands = subprocess.check_output('compgen -A function -abck %s' % text, shell=True, executable='/bin/bash')
+            command = 'compgen -A function -abck %s' % text
+            possible_system_commands = subprocess.check_output(command, shell=True, executable='/bin/bash').decode('utf-8').split('\n')
 
             if len(possible_system_commands) == 0:
                 return [text]
             elif len(possible_system_commands) > SerpentShell.MAX_COMPLETIONS:
-                return ["%d possiblities"] % (len(possible_system_commands))
+                return
             else:
                 return possible_system_commands
 
@@ -67,16 +77,33 @@ class SerpentShell(Cmd):
     def do_load(self, arg):
         'Load a given module'
         print('Would have loaded %s' % arg)
-        #self.log_command(arg, result)
-        #print("%s" % result)
 
-    # TODO: Implement
-    # def do_(self, arg):
-    #     pass
+    def command_usage_message(self, usage_msg):
+        print('Error: incorrect command format\n')
+        print('Usage: %s\n' % usage_msg)
 
-    # def do_(self, arg):
-    #     pass
+    def complete_list(self, text, line, start_index, end_index):
+        if text == None or len(text.strip()) == 0:
+            return self.RESOURCE_TYPES
+        else:
+            return [ completion for completion in self.RESOURCE_TYPES if completion.startswith(text)]
+        
+    def do_list(self, arg):
+        'List a set of resources [list <resource type>]'
 
+        if len(arg.split(' ')) != 1:
+            self.command_usage_message('list <resource type>')
+        else:
+            if arg == 'payloads':
+                results = os.listdir(self.PAYLOADS_DIRECTORY)
+                results_string = '\n'.join(results)
+                self.log_command('list %s' % arg, results_string)
+                print(results_string)
+            else:
+                print('Unknown resource type "%s"' % arg)
+
+        print('')
+    
     def find_payload(self, payload_name):
         payload_path = os.path.join(self.PAYLOADS_DIRECTORY, payload_name)
 
@@ -85,14 +112,12 @@ class SerpentShell(Cmd):
         else:
             return None
 
-    # TODO: Add a list_payloads action
     def do_deploy(self, arg):
         'Deploy the specified payload to the specified target [deploy <payload> <target>]'
 
         args = arg.split(' ')
         if len(args) != 2:
-            print('Error: incorrect command format\n')
-            print('Usage: deploy <payload> <target>\n')
+            self.command_usage_message('deploy <payload> <target>')
         else:
             payload = args[0]
             target = args[1]
