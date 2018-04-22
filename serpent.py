@@ -2,6 +2,7 @@ import datetime
 import subprocess
 import sys
 import os
+import db
 
 from cmd import Cmd
 
@@ -36,6 +37,7 @@ class SerpentShell(Cmd):
     def __init__(self):
         super(SerpentShell, self).__init__()
         self.log_file = open(SerpentShell.OUTPUT_FILENAME, 'a+')
+        db.create_db_tables_if_not_exists()
 
     def log_command(self, command, results):
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

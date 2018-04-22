@@ -1,15 +1,18 @@
 import sqlite3
+import datetime
 
-DB_NAME = 'serpent'
+DB_NAME = 'serpent.db'
 
-CREATE_SERPENT_DB_TABLES_COMMAND = """
+CREATE_TABLE_COMMANDS = [
+    """
     CREATE TABLE IF NOT EXISTS operations(
         id INTEGER AUTOINCREMENTING PRIMARY KEY,
         op_name TEXT NOT NULL,
         is_current BOOLEAN NOT NULL,
-        creation_date DATE NOT NULL,
+        creation_date DATE NOT NULL
     );
-    
+    """,
+    """
     CREATE TABLE IF NOT EXISTS agents(
         id INTEGER AUTOINCREMENTING PRIMARY KEY,
         op INTEGER NOT NULL,
@@ -17,7 +20,8 @@ CREATE_SERPENT_DB_TABLES_COMMAND = """
         FOREIGN KEY(op) REFERENCES operations(id),
         FOREIGN KEY(configuration) REFERENCES agent_configurations(id)
     );
-    
+    """,
+    """
     CREATE TABLE IF NOT EXISTS listeners(
         id INTEGER AUTOINCREMENTING PRIMARY KEY,
         op INTEGER NOT NULL,
@@ -25,7 +29,8 @@ CREATE_SERPENT_DB_TABLES_COMMAND = """
         FOREIGN KEY(op) REFERENCES operations(id),
         FOREIGN KEY(configuration) REFERENCES listener_configurations(id)
     );
-    
+    """,
+    """
     CREATE TABLE IF NOT EXISTS targets(
         id INTEGER AUTOINCREMENTING PRIMARY KEY,
         ip TEXT,
@@ -33,22 +38,28 @@ CREATE_SERPENT_DB_TABLES_COMMAND = """
         os TEXT,
         ops_notes TEXT
     );
-    
+    """,
+
     # TODO: Finish adding fields
+    """
     CREATE TABLE IF NOT EXISTS payload_configurations(
         id INTEGER AUTOINCREMENTING PRIMARY KEY,
         op INTEGER NOT NULL,
         FOREIGN KEY(op) REFERENCES operations(id)
     );
-    
+    """,
+
     # TODO: Finish adding fields
+    """
     CREATE TABLE IF NOT EXISTS listener_configurations(
         id INTEGER AUTOINCREMENTING,
         op INTEGER NOT NULL,
         FOREIGN KEY(op) REFERENCES operations(id)
     );
-    
+    """,
+
     # TODO: Finish adding fields
+    """
     CREATE TABLE IF NOT EXISTS agent_configurations(
         id INTEGER AUTOINCREMENTING PRIMARY KEY,
         op INTEGER NOT NULL,
@@ -56,7 +67,8 @@ CREATE_SERPENT_DB_TABLES_COMMAND = """
         FOREIGN KEY(op) REFERENCES operations(id),
         FOREIGN KEY(target_id) REFERENCES targets(id)
     );
-    
+    """,
+    """
     CREATE TABLE IF NOT EXISTS port_scan_results(
         id INTEGER AUTOINCREMENTING PRIMARY KEY,
         op INTEGER NOT NULL,
@@ -67,18 +79,27 @@ CREATE_SERPENT_DB_TABLES_COMMAND = """
         FOREIGN KEY(op) REFERENCES operations(id),
         FOREIGN KEY(target_id) REFERENCES targets(id)
     );
-"""
+    """
+]
 
-# TODO: Implement support for schema changes
-def create_db_tables_if_not_exists:
+
+def execute_commands(commands):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute(CREATE_SERPENT_DB_TABLES_COMMAND)
+
+    for command in commands:
+        c.execute(command)
+        
     conn.commit()
     conn.close()
 
+# TODO: Implement support for schema changes
+def create_db_tables_if_not_exists():
+    execute_commands(CREATE_TABLE_COMMANDS)
+
 def start_op(op_name):
-    pass
+    
+    execute_commands(["INSERT INTO operations (op_name, is_current, creation_date) VALUES (%s, 1, %s)" % (op_name, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))])
 
 def store_scan_results(results):
     pass
