@@ -1,241 +1,94 @@
 import sqlite3
 
-# TODO: Implement and integrate
-class SerpentDb:
-    DB_NAME = 'serpent'
+DB_NAME = 'serpent'
 
-    TABLES = {
-        'operations': {
-            'columns': {
-                'id': {
-                    'type': 'integer autoincrementing'
-                },
-                'op_name': {
-                    'type': 'text'
-                },
-                'is_current': {
-                    'type': 'boolean'
-                },
-                'creation_date': {
-                    'type': 'date'
-                }
-            },
-            'primary_key': 'id'
-        },
-        'agents': {
-            'columns': {
-                'id': {
-                    'type': 'integer autoincrementing'
-                },
-                'op': {
-                    'type': 'integer'
-                },
-                'configuration': {
-                    'type': 'integer'
-                }
-            },
-            'primary_key': 'id',
-            'foreign_keys': {
-                'op': 'operations.id',
-                'configuration': 'agent_configurations.id'
-            }
-        },
-        'listeners': {
-            'columns': {
-                'id': {
-                    'type': 'integer autoincrementing'
-                },
-                'op': {
-                    'type': 'integer'
-                },
-                'configuration': {
-                    'type': 'integer'
-                }
-            },
-            'primary_key': 'id',
-            'foreign_keys': {
-                'op': 'operations.id',
-                'configuration': 'listener_configurations.id'
-            }
-        },
-        'targets': {
-            'columns': {
-                'id': {
-                    'type': 'integer autoincrementing'
-                },
-                'ip': {
-                    'type': 'text'
-                },
-                'hostname': {
-                    'type': 'text'
-                },
-                'os': {
-                    'type': 'text'
-                }
-            },
-            'primary_key': 'id'
-        },
-        'payload_configurations': {
-            'columns': {
-                'id': {
-                    'type': 'integer autoincrementing'
-                },
-                'op': {
-                    'type': 'integer'
-                },
-                # TODO: Finish defining
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # }
-            },
-            'primary_key': 'id',
-            'foreign_keys': {
-                'op': 'operations.id'
-            }
-        },
-        'listener_configurations': {
-            'columns': {
-                'id': {
-                    'type': 'integer autoincrementing'
-                },
-                'op': {
-                    'type': 'integer'
-                },
-                # TODO: Finish defining
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # }
-            },
-            'primary_key': 'id',
-            'foreign_keys': {
-                'op': 'operations.id'
-            }
-        },
-        'agent_configurations': {
-            'columns': {
-                'id': {
-                    'type': 'integer autoincrementing'
-                },
-                'op': {
-                    'type': 'integer'
-                },
-                # TODO: Finish defining
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # },
-                # '': {
-                #     'type': ''
-                # }
-            },
-            'primary_key': 'id',
-            'foreign_keys': {
-                'op': 'operations.id'
-            }
-        },
-        'port_scan_results': {
-            'columns': {
-                'id': {
-                    'type': 'integer autoincrementing'
-                },
-                'op': {
-                    'type': 'integer'
-                },
-                'target_id': {
-                    'type': 'id'
-                },
-                'port': {
-                    'type': 'integer'
-                },
-                'status': {
-                    'type': 'text'
-                },
-                'scan_time': {
-                    'type': 'date'
-                }
-            },
-            'primary_key': 'id',
-            'foreign_keys': {
-                'op': 'operations.id',
-                'target_id': 'targets.id'
-            }
-        },
-        # TODO: Add any other necessary tables
-        # '': {
-        #     'columns': {
-        #         '': {
-        #             'type': ''
-        #         },
-        #         '': {
-        #             'type': ''
-        #         },
-        #         '': {
-        #             'type': ''
-        #         },
-        #         '': {
-        #             'type': ''
-        #         },
-        #         '': {
-        #             'type': ''
-        #         }
-        #     },
-        #     'primary_key': ''
-        # }
-    }
+CREATE_SERPENT_DB_TABLES_COMMAND = """
+    CREATE TABLE IF NOT EXISTS operations(
+        id INTEGER AUTOINCREMENTING PRIMARY KEY,
+        op_name TEXT NOT NULL,
+        is_current BOOLEAN NOT NULL,
+        creation_date DATE NOT NULL,
+    );
+    
+    CREATE TABLE IF NOT EXISTS agents(
+        id INTEGER AUTOINCREMENTING PRIMARY KEY,
+        op INTEGER NOT NULL,
+        configuration INTEGER NOT NULL,
+        FOREIGN KEY(op) REFERENCES operations(id),
+        FOREIGN KEY(configuration) REFERENCES agent_configurations(id)
+    );
+    
+    CREATE TABLE IF NOT EXISTS listeners(
+        id INTEGER AUTOINCREMENTING PRIMARY KEY,
+        op INTEGER NOT NULL,
+        configuration INTEGER NOT NULL,
+        FOREIGN KEY(op) REFERENCES operations(id),
+        FOREIGN KEY(configuration) REFERENCES listener_configurations(id)
+    );
+    
+    CREATE TABLE IF NOT EXISTS targets(
+        id INTEGER AUTOINCREMENTING PRIMARY KEY,
+        ip TEXT,
+        hostname TEXT,
+        os TEXT,
+        ops_notes TEXT
+    );
+    
+    # TODO: Finish adding fields
+    CREATE TABLE IF NOT EXISTS payload_configurations(
+        id INTEGER AUTOINCREMENTING PRIMARY KEY,
+        op INTEGER NOT NULL,
+        FOREIGN KEY(op) REFERENCES operations(id)
+    );
+    
+    # TODO: Finish adding fields
+    CREATE TABLE IF NOT EXISTS listener_configurations(
+        id INTEGER AUTOINCREMENTING,
+        op INTEGER NOT NULL,
+        FOREIGN KEY(op) REFERENCES operations(id)
+    );
+    
+    # TODO: Finish adding fields
+    CREATE TABLE IF NOT EXISTS agent_configurations(
+        id INTEGER AUTOINCREMENTING PRIMARY KEY,
+        op INTEGER NOT NULL,
+        target_id INTEGER NOT NULL,
+        FOREIGN KEY(op) REFERENCES operations(id),
+        FOREIGN KEY(target_id) REFERENCES targets(id)
+    );
+    
+    CREATE TABLE IF NOT EXISTS port_scan_results(
+        id INTEGER AUTOINCREMENTING PRIMARY KEY,
+        op INTEGER NOT NULL,
+        target_id ID NOT NULL,
+        port INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        scan_time DATE NOT NULL,
+        FOREIGN KEY(op) REFERENCES operations(id),
+        FOREIGN KEY(target_id) REFERENCES targets(id)
+    );
+"""
 
-    def __init__(self):
-        pass
+# TODO: Implement support for schema changes
+def create_db_tables_if_not_exists:
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(CREATE_SERPENT_DB_TABLES_COMMAND)
+    conn.commit()
+    conn.close()
 
-    def create_tables(self):
-        # TODO: Get connection
-        
-        # TODO: Parse the table definitions and create the tables (if they don't exist)
-        for table in self.TABLES:
-            # TODO: next if table exists
-            
-            create_table_command = 'CREATE TABLE %s (' % table
-            table_data = self.TABLES[table]
-            
-            for column in table_data['columns']:
-                create_table_command += '%s %s' % (column, table_data['columns'][column]['type'])
+def start_op(op_name):
+    pass
 
-            # TODO: Add primary and foreign keys; also add not-null contraints
+def store_scan_results(results):
+    pass
 
-            create_table_command += ')'
+def query_table(table_name, params):
+    pass
 
-            # TODO: Execute statement
+def query_targets(params):
+    pass
 
-        # TODO: Close connection / submit transaction as needed
+def query_agents(params):
+    pass
 
