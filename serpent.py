@@ -37,7 +37,6 @@ class SerpentShell(Cmd):
     def __init__(self):
         super(SerpentShell, self).__init__()
         self.log_file = open(SerpentShell.OUTPUT_FILENAME, 'a+')
-        db.create_db_tables_if_not_exists()
 
     def log_command(self, command, results):
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -124,6 +123,11 @@ class SerpentShell(Cmd):
         else:
             return None
 
+    def do_query(self, arg):
+        'Allows execution of arbitrary queries of the operational database; use with care [query <SQL statement>]'
+        results = db.execute_query(arg)
+        print('\n' + db.convert_results_to_string(results) + '\n')
+
     def do_configure(self, arg):
         # TODO: implement support for configuring the different payloads
         # and storing that configuration to refer back to when interacting
@@ -167,5 +171,10 @@ class SerpentShell(Cmd):
             self.log_file = None
             
 if __name__ == '__main__':
-    # TODO: require initial configuration on first starup (op name, operator alias, etc.)
+    db.create_db_tables_if_not_exists()
+    current_op = db.get_current_op()
+
+    if current_op == None:
+        db.start_op(input('Enter your operation name: '))
+    
     SerpentShell().cmdloop()
