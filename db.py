@@ -12,22 +12,6 @@ CREATE_TABLE_COMMAND = """
         creation_date DATE NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS agents(
-        id INTEGER PRIMARY KEY,
-        op INTEGER NOT NULL,
-        configuration INTEGER NOT NULL,
-        FOREIGN KEY(op) REFERENCES operations(id),
-        FOREIGN KEY(configuration) REFERENCES agent_configurations(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS listeners(
-        id INTEGER PRIMARY KEY,
-        op INTEGER NOT NULL,
-        configuration INTEGER NOT NULL,
-        FOREIGN KEY(op) REFERENCES operations(id),
-        FOREIGN KEY(configuration) REFERENCES listener_configurations(id)
-    );
-
     CREATE TABLE IF NOT EXISTS targets(
         id INTEGER PRIMARY KEY,
         ip TEXT,
@@ -42,16 +26,12 @@ CREATE_TABLE_COMMAND = """
         FOREIGN KEY(op) REFERENCES operations(id)
     );
 
-    CREATE TABLE IF NOT EXISTS listener_configurations(
-        id INTEGER AUTOINCREMENTING,
-        op INTEGER NOT NULL,
-        FOREIGN KEY(op) REFERENCES operations(id)
-    );
-
     CREATE TABLE IF NOT EXISTS agent_configurations(
-        id INTEGER PRIMARY KEY,
+        callback_token TEXT PRIMARY KEY,
         op INTEGER NOT NULL,
         target_id INTEGER NOT NULL,
+        callback_port INTEGER NOT NULL,
+        listener_type TEXT NOT NULL,
         FOREIGN KEY(op) REFERENCES operations(id),
         FOREIGN KEY(target_id) REFERENCES targets(id)
     );
@@ -137,3 +117,9 @@ def query_targets(params):
 def query_agents(params):
     pass
 
+def record_agent_callback_configuration(op_id, target_id, callback_token, callback_port, listener_type):
+    command = """
+        INSERT INTO agent_configurations (op_id, target_id, callback_token, callback_port, listener_type) VALUES (%s, %s, %s, %s, %s);
+    """ % (op_id, target_id, callback_token, callback_port, listener_type)
+    
+    execute_command(command)

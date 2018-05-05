@@ -1,9 +1,22 @@
 import datetime
 import subprocess
+import random
+import re
+
+# If the readline module is loaded, input will automatically inherit bash-like history-list editing
+# (e.g. Control-P scrolls back to the last command, Control-N forward to the next one, Control-F moves the
+# cursor to the right non-destructively, Control-B moves the cursor to the left non-destructively, etc.).
+# Reference: https://docs.python.org/3/library/cmd.html
+import readline
+import string
+import sqlite3
 import sys
 import os
 import db
 
+# TODO: Remove
+#from listeners import http_callback_listener
+from serpent_server import start_server
 from cmd import Cmd
 
 # Additional needs:
@@ -29,19 +42,25 @@ class SerpentShell(Cmd):
     RESOURCE_TYPES = [ 'payloads', 'callbacks', 'profile' ]
     
     MAX_COMPLETIONS = 10
+    CALLBACK_TOKEN_LENGTH = 64
     
     intro = 'Welcome to the serpent shell.   Type help or ? to list commands.\n'
-    prompt = '(serpent) '
+    prompt = 'serpent> '
     file = None
 
-    def __init__(self):
+    def __init__(self, current_op_id):
         super(SerpentShell, self).__init__()
         self.log_file = open(SerpentShell.OUTPUT_FILENAME, 'a+')
+        self.current_op_id = current_op_id
 
+    def random_string(self, length):
+        return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(length))
+
+    # TODO: Ensure that all do_* methods are integrated with this
     def log_command(self, command, results):
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        self.log_file.write("[%s] > %s\n" % (current_time, command))
+        self.log_file.write("[%s] %s%s\n" % (current_time, self.prompt, command))
 
         results_list = None
         if type(results) is list:
@@ -54,19 +73,20 @@ class SerpentShell(Cmd):
         for line in results_list:
             self.log_file.write("[%s] %s\n" % (current_time, line))
 
+    # TODO: Uncomment if there is a performant way to do this (may just need to cache the list of available commands at start up, asynchronously ideally)
     # See https://stackoverflow.com/questions/187621/how-to-make-a-python-command-line-program-autocomplete-arbitrary-things-not-int/23959790
-    def complete_shell(self, text, line, start_index, end_index):
-        if text != None:
-            # See https://stackoverflow.com/questions/948008/linux-command-to-list-all-available-commands-and-aliases
-            command = 'compgen -A function -abck %s' % text
-            possible_system_commands = subprocess.check_output(command, shell=True, executable='/bin/bash').decode('utf-8').split('\n')
+    # def complete_shell(self, text, line, start_index, end_index):
+    #     if text != None:
+    #         # See https://stackoverflow.com/questions/948008/linux-command-to-list-all-available-commands-and-aliases
+    #         command = 'compgen -A function -abck %s' % text
+    #         possible_system_commands = subprocess.check_output(command, shell=True, executable='/bin/bash').decode('utf-8').split('\n')
 
-            if len(possible_system_commands) == 0:
-                return [text]
-            elif len(possible_system_commands) > SerpentShell.MAX_COMPLETIONS:
-                return
-            else:
-                return possible_system_commands
+    #         if len(possible_system_commands) == 0:
+    #             return [text]
+    #         elif len(possible_system_commands) > SerpentShell.MAX_COMPLETIONS:
+    #             return
+    #         else:
+    #             return possible_system_commands
 
     def execute_shell_command(self, command):
         # TODO: Implement graceful scrolling over long results
@@ -125,8 +145,23 @@ class SerpentShell(Cmd):
 
     def do_query(self, arg):
         'Allows execution of arbitrary queries of the operational database; use with care [query <SQL statement>]'
-        results = db.execute_query(arg)
-        print('\n' + db.convert_results_to_string(results) + '\n')
+
+        query = arg
+        if re.compile('^show tables[\;]?$').match(arg):
+            query = "select * from sqlite_master;"
+
+        if not query.endswith(';'):
+            query += ';'
+
+        output = ''
+        try:
+            results = db.execute_query(query)
+            output = '\n' + db.convert_results_to_string(results) + '\n'
+        except sqlite3.OperationalError:
+            output = '\nEncountered error while attempting to execute the provided query; please check your syntax and try again\n'
+
+        print(output)
+        self.log_command(arg, output)
 
     def do_configure(self, arg):
         # TODO: implement support for configuring the different payloads
@@ -155,10 +190,31 @@ class SerpentShell(Cmd):
         # TODO: Support connecting to beacons (reverse shell type things)
         pass
 
+    # TODO: Refactor / fix
+    def do_listen(self, arg):
+        'Start a callback listener with the given configuration (listen <callback type> <target> <destination port>)'
+
+        args = arg.split(' ')
+        if len(args) != 3:
+            self.command_usage_message('listen <target> <destination port> <callback type>')
+        else:
+            pass
+            # TODO: Cleanup / fix
+            # callback_token = self.random_string(self.CALLBACK_TOKEN_LENGTH)
+            # http_callback_listener.start_listener(self.current_op_id, args[0], callback_token, args[1], args[2])
+            # db.record_agent_callback_configuration(self.current_op_id, args[0], callback_token, args[1], args[2])
+
     def do_send(self, arg):
         # TODO: Send message to specified agent
         pass
-    
+
+    def default(self, arg):
+        self.execute_shell_command(arg)
+
+    # TODO: Uncomment if there is a performant way to do this
+    # def completedefault(self, text, line, start_index, end_index):
+    #     self.complete_shell(text, line, start_index, end_index)
+        
     def do_quit(self, arg):
         'Stop recording, close the serpent window, and exit'
         print('Thank you for using Serpent')
@@ -174,7 +230,11 @@ if __name__ == '__main__':
     db.create_db_tables_if_not_exists()
     current_op = db.get_current_op()
 
+    # TODO: Pass in reference back to the main logic handler? (or integrate the web server with the database)
+    start_server
+
     if current_op == None:
         db.start_op(input('Enter your operation name: '))
-    
-    SerpentShell().cmdloop()
+
+    current_op_id = current_op[0]
+    SerpentShell(current_op_id).cmdloop()
