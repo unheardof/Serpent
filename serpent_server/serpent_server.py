@@ -1,11 +1,14 @@
-import http.server
-from urllib import parse
+from flask import Flask, request
+
+# TODO: Remove
+#import http.server
+#from urllib import parse
 
 HOST_NAME = 'localhost'
 PORT_NUMBER = 8000
 
-# TODO: Redefine and use or remove
-#HELLO_WORLD_PATTERN = re.compile("/.*[Hh]ello.*")
+app = Flask(__name__)
+application = app # Needed for ElasticBeanstalk
 
 class SerpentServerHandler(http.server.SimpleHTTPRequestHandler):
 
